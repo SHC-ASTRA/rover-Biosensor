@@ -22,7 +22,6 @@
 #include <SoftwareSerial.h>
 #include <AccelStepper.h>
 #include "AstraVicCAN.h"
-#include <EEPROM.h>
 
 //------------//
 //  Settings  //
@@ -39,7 +38,6 @@
 #define LED_PIN 13 // Builtin LED pin for Teensy 4.1 (pin 25 for pi Pico)
 #define CAN_TX 22
 #define CAN_RX 20
-#define SIZE 1
 
 //---------------------//
 //  Component classes  //
@@ -47,10 +45,8 @@
 // There is only one smart servo for Citadel
 LSS myLSS = LSS(LSS_ID);
 
-hw_timer_t *Timer0_Cfg = NULL, *Timer1_Cfg = NULL /*, *Timer2_Cfg = NULL*/;
-// portMUX_TYPE timer0Mux = portMUX_INITIALIZER_UNLOCKED, timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+hw_timer_t *Timer0_Cfg = NULL, *Timer1_Cfg = NULL;
 Servo servo1, servo2, servo3;
-// AccelStepper stepper1 = AccelStepper(motorInterfaceType, stepPin, dirPin);
 
 //----------//
 //  Timing  //
@@ -61,105 +57,53 @@ unsigned long fanTimer, fansTimer, fanTimer_1, fanTimer_2, fanTimer_3;
 unsigned long pumpTimer, pumpsTimer, pumpTimer_1, pumpTimer_2, pumpTimer_3;
 bool fansOn = 0, fanOn_1 = 0, fanOn_2 = 0, fanOn_3 = 0; // 1 = long = 2seconds, 0 = short = 0.5s
 bool pumpON = 0, pumpON_1 = 0, pumpON_2 = 0, pumpON_3 = 0;
-bool servo1_On = 0, servo2_On = 0, servo3_On = 0, limitReached = 0;
 unsigned long prevFanTime = 0, prevFanTime_1 = 0, prevFanTime_2 = 0, prevFanTime_3 = 0;
-int servoAngle = 0;
-int const angleLimit = 90, address = 0;
-bool restartstate;
 
 //--------------//
 //  Prototypes  //
 //--------------//
 void activateCapSer(int num, int truFal);
-void activatePump(int num, int truFal);
-void activateFan(int num, int truFal);
 void initialize();
 std::vector<String> parseInput(String input, const char delim);
-int binaryToDecimal(std::vector<String> parCmd);
 
 void IRAM_ATTR Timer0_ISR()
 {
   // portENTER_CRITICAL_ISR(&timer0Mux);
   if (fansOn && (millis() - prevFanTime >= fansTimer))
   {
-    digitalWrite(19, LOW);
-    digitalWrite(20, LOW);
-    digitalWrite(21, LOW);
+    digitalWrite(14, LOW);
+    digitalWrite(32, LOW);
+    digitalWrite(15, LOW);
     fansOn = 0;
-    prevFanTime = millis();
+    fansTimer = 0;
   }
   else if (fanOn_1 && (millis() - prevFanTime_1 >= fanTimer_1))
   {
-    digitalWrite(19, LOW);
+    digitalWrite(14, LOW);
     fanOn_1 = 0;
-    prevFanTime_1 = millis();
+    fanTimer_1 = 0;
   }
   else if (fanOn_2 && (millis() - prevFanTime_2 >= fanTimer_2))
   {
-    digitalWrite(20, LOW);
+    digitalWrite(32, LOW);
     fanOn_2 = 0;
-    prevFanTime_2 = millis();
+    fanTimer_2 = 0;
   }
   else if (fanOn_3 && (millis() - prevFanTime_3 >= fanTimer_3))
   {
-    digitalWrite(21, LOW);
+    digitalWrite(15, LOW);
     fanOn_3 = 0;
-    prevFanTime_3 = millis();
+    fanTimer_3 = 0;
   }
   // portEXIT_CRITICAL_ISR(&timer0Mux);
 }
 
 void IRAM_ATTR Timer1_ISR()
 {
-  // portENTER_CRITICAL_ISR(&timer1Mux);
   digitalWrite(LED_BUILTIN, !ledState);
   ledState = !ledState;
-  // portEXIT_CRITICAL_ISR(&timer1Mux);
 }
 
-// void IRAM_ATTR Timer2_ISR()
-// {
-//   if (!limitReached)
-//   {
-//     if (servo1_On)
-//     {
-//       servo1.write(servoAngle);
-//       servoAngle++;
-//     }
-//     else if (servo2_On)
-//     {
-//       servo2.write(servoAngle);
-//       servoAngle++;
-//     }
-//     else if (servo3_On)
-//     {
-//       servo3.write(servoAngle);
-//       servoAngle++;
-//     }
-//     if (servoAngle == 90)
-//       limitReached = 1;
-//   }
-//   else
-//   {
-
-//     if (servo1_On)
-//     {
-//       servo1.write(servoAngle);
-//       servoAngle--;
-//     }
-//     else if (servo2_On)
-//     {
-//       servo2.write(servoAngle);
-//       servoAngle--;
-//     }
-//     else if (servo3_On)
-//     {
-//       servo3.write(servoAngle);
-//       servoAngle--;
-//     }
-//     if (servoAngle == 0)
-//       limitReached = 0;
-//   }
 // }
 // std::vector<String> parseInput(String input, const char delim);
 
@@ -380,15 +324,13 @@ void loop()
   if (Serial.available())
   {
     String input = Serial.readStringUntil('\n');
-    // Serial.println("Reached serail condition");
     Serial.println(input);
 
-
     input.trim();                    // Remove preceding and trailing whitespace
-    std::vector<String> parCmd = {};       // Initialize empty vector to hold separated arguments
+    std::vector<String> parCmd = {}; // Initialize empty vector to hold separated arguments
     parCmd = parseInput(input, ','); // Separate `input` by commas and place into parCmd vector
-    parCmd[0].toLowerCase();               // Make command case-insensitive
-    String command = parCmd[0];            // To make processing code more readable
+    parCmd[0].toLowerCase();         // Make command case-insensitive
+    String command = parCmd[0];      // To make processing code more readable
 
     //--------//
     //  Misc  //
@@ -434,47 +376,46 @@ void loop()
     // Fan
     if (parCmd[0] == "fans")
     { // Is looking for a command that looks like "fan,0,0,0,time"
-      // if (command != input)
-      // {
-        // input = command;
-        digitalWrite(14, HIGH);
-        digitalWrite(32, HIGH);
-        digitalWrite(15, HIGH);
-        fansOn = 1;
-        fansTimer = parCmd[2].toInt();
-        Serial.println("Fans Activated");
-      // }
+
+      Serial.println(parCmd[0]);
+      digitalWrite(14, parCmd[2].toInt());
+      digitalWrite(15, parCmd[2].toInt());
+      digitalWrite(15, HIGH);
+      fansOn = 1;
+      fansTimer = parCmd[1].toInt();
+      prevFanTime = millis();
+      Serial.println("Fans Activated");
       // Pump
     }
     else if (parCmd[0] == "fan")
     {
       // if (command != input)
       // {
-        // input = command;
-        // digitalWrite(19 + parCmd[1].toInt(), parCmd[2].toInt());
-
-        switch (parCmd[1].toInt())
-        {
-        case 1:
-          digitalWrite(14, parCmd[2].toInt());
-          fanOn_1 = 1;
-          fanTimer_1 = parCmd[3].toInt();
-          break;
-        case 2:
-          digitalWrite(32, parCmd[2].toInt());
-          fanOn_2 = 1;
-          fanTimer_2 = parCmd[3].toInt();
-          break;
-        case 3:
-          digitalWrite(15, parCmd[2].toInt());
-          fanOn_3 = 1;
-          fanTimer_3 = parCmd[3].toInt();
-          break;
-        default:
-          break;
-        }
-        Serial.println("Fan Activated");
-      // }
+      Serial.println("Reached fan");
+      switch (parCmd[1].toInt())
+      {
+      case 1:
+        digitalWrite(14, parCmd[2].toInt());
+        fanOn_1 = 1;
+        fanTimer_1 = parCmd[3].toInt();
+        prevFanTime_1 = millis();
+        break;
+      case 2:
+        digitalWrite(32, parCmd[2].toInt());
+        fanOn_2 = 1;
+        fanTimer_2 = parCmd[3].toInt();
+        prevFanTime_2 = millis();
+        break;
+      case 3:
+        digitalWrite(15, parCmd[2].toInt());
+        fanOn_3 = 1;
+        fanTimer_3 = parCmd[3].toInt();
+        prevFanTime_3 = millis();
+        break;
+      default:
+        break;
+      }
+      Serial.println("Fan Activated");
     }
     // else if (parCmd[0] == "pump")
     // { // Is looking for a command that looks like "pump,0,0,0,time"
@@ -544,23 +485,24 @@ void loop()
     //     }
     //   }
     // }
-    // else if (parCmd[0] == "servo")
-    // {
-    //   switch (parCmd[1].toInt())
-    //   {
-    //   case 1:
-    //     servo1.write(parCmd[2].toInt());
-    //     break;
-    //   case 2:
-    //     servo2.write(parCmd[2].toInt());
-    //     break;
-    //   case 3:
-    //     servo2.write(parCmd[2].toInt());
-    //     break;
-    //   default:
-    //     break;
-    //   }
-    // }
+    // Hardcode limits for servos
+    else if (parCmd[0] == "servo")
+    {
+      switch (parCmd[1].toInt())
+      {
+      case 1:
+        servo1.write(parCmd[2].toInt());
+        break;
+      case 2:
+        servo2.write(parCmd[2].toInt());
+        break;
+      case 3:
+        servo3.write(parCmd[2].toInt());
+        break;
+      default:
+        break;
+      }
+    }
 
     // else if (parCmd[0] == "Stepper")
     // {
@@ -586,7 +528,6 @@ void loop()
       servo3.detach();
     }
   }
-  // vTaskDelay(portMAX_DELAY);
 }
 
 //------------------------------------------------------------------------------------------------//
@@ -614,12 +555,10 @@ void initialize()
 
   // ESP32Can.begin(TWAI_SPEED_1000KBPS, CAN_TX, CAN_RX);
   // Serial.println("CAN has started");
-  // EEPROM.begin(SIZE);
-  // EEPROM.put(address, restartstate);
   Serial.begin(115200);
   // Serial1.begin(115200);
   while (!Serial)
-  ;
+    ;
   Serial.println("Serial has started");
   pinMode(7, OUTPUT); // Pi Tx   (UART) // UART
   pinMode(8, INPUT);  // Pi Rx   (UART) // UART
@@ -627,98 +566,73 @@ void initialize()
   pinMode(LED_PIN, OUTPUT);
   // while (!Serial1)
   //   ;
-  
+
   // Fans
   pinMode(14, OUTPUT);
   pinMode(32, OUTPUT);
   pinMode(15, OUTPUT);
-  
+
   // Vibrator
   pinMode(13, OUTPUT);
-  
+
   // Pumps
   // pinMode(38, OUTPUT);
   // pinMode(39, OUTPUT);
   // pinMode(40, OUTPUT);
   // pinMode(41, OUTPUT);
-  
+
   digitalWrite(14, LOW); // Fan 1
   digitalWrite(32, LOW); // Fan 2
   digitalWrite(15, LOW); // Fan 3
   //
   digitalWrite(13, LOW); // Vibrator
-  
+
   // digitalWrite(20, LOW); // Pump 1
   // digitalWrite(22, LOW); // Pump 2
   // digitalWrite(23, LOW); // Pump 3
   // digitalWrite(17, LOW); // Pump 4
-  
+
   //------------------//
   //  Communications  //
   //------------------//
-  
+
   LSS::initBus(LSS_SERIAL, LSS_BAUD);
   delay(2000);
   myLSS.setAngularStiffness(0);
   myLSS.setAngularHoldingStiffness(0);
   myLSS.setAngularAcceleration(15);
   myLSS.setAngularDeceleration(15);
-  
+
   Serial.println("Smart servo has started");
-  
+
   Timer0_Cfg = timerBegin(0, 80, true);
   timerAttachInterrupt(Timer0_Cfg, &Timer0_ISR, true);
   timerAlarmWrite(Timer0_Cfg, 5000, true);
   timerAlarmEnable(Timer0_Cfg);
-  
+
   Timer1_Cfg = timerBegin(1, 80, true);
   timerAttachInterrupt(Timer1_Cfg, &Timer1_ISR, true);
   timerAlarmWrite(Timer1_Cfg, 100000, true);
   timerAlarmEnable(Timer1_Cfg);
-  
-  // Timer2_Cfg = timerBegin(0, 80, true);
-  // timerAttachInterrupt(Timer1_Cfg, &Timer2_ISR, true);
-  // timerAlarmWrite(Timer1_Cfg, 500000, true);
-  // timerAlarmEnable(Timer1_Cfg);
-  
+
   Serial.println("timers has started");
-  
+
   //------------------//
   //  Servos          //
   //------------------//
-  
+
   servo1.attach(5);
   servo2.attach(19);
   servo3.attach(21);
-  
+
   //-----------//
   //  Sensors  //
   //-----------//
-  
+
   //--------------------//
   //  Misc. Components  //
   //--------------------//
-  // if(EEPROM.get(address, restartstate))
-  // {
-  //   restartstate = false;
-  //   EEPROM.put(address, restartstate);
-  //   ESP.restart();
-  // }
 }
-
-// int binaryToDecimal(std::vector<String> parCmd)
-// {
-//   int exp = 0, sum = 0;
-//   for (int i = 0; i < parCmd.size(); i++)
-//   {
-//     if (parCmd[i] == "0" || parCmd[i] == "1")
-//     {
-//       sum += pow(2 * parCmd[i].toInt(), exp);
-//       exp++;
-//     }
-//   }
-//   return sum;
-// }
 
 std::vector<String> parseInput(String input, const char delim)
 {
