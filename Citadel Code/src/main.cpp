@@ -6,6 +6,7 @@
  *
  */
 
+
 // WARNING: You must edit
 // `Citadel Code/.pio/libdeps/adafruit_feather_esp32_v2/Lynxmotion Smart Servo -LSS-/src/LSS.h`
 // comment out line 18. This will fix the error on line 167 (myLSS:initBus)
@@ -18,6 +19,11 @@
 #include <cmath>
 #include <vector>
 #include <LSS.h>
+
+#ifndef LSS_SupportSoftwareSerial
+#warning "Please uncomment line 18 of LSS.h!!! See top of main.cpp for details."
+#endif
+
 #include <ESP32Servo.h>
 #include <SoftwareSerial.h>
 #include <AccelStepper.h>
@@ -154,6 +160,8 @@ void setup()
 
     COMMS_UART.begin(COMMS_UART_BAUD);
 
+    ESP32Can.begin(TWAI_SPEED_1000KBPS, PIN_CTX, PIN_CRX);
+
 
     //-----------//
     //  Sensors  //
@@ -289,14 +297,39 @@ void loop()
             }
         }
 
-        // else if (commandID == CMD_STEPPER_CTRL)
-        // {
-        //   switch(int(canData[0]))
-        //   {
-        //     case 0:
+        else if (commandID == CMD_STEPPER_CTRL)
+        {
+            if (canData.size() == 2) {
+                MOTOR_UART.printf("pump,%d,%d\n", canData[1], canData[2]);
+            }
+        }
 
-        //   }
-        // }
+        else if (commandID == CMD_CITADEL_FAN_CTRL) {
+            if (canData.size() == 2) {
+                switch (static_cast<int>(canData[0])) {
+                case 1:
+                    digitalWrite(PIN_FAN_1, HIGH);
+                    fanOn_1 = 1;
+                    fanTimer_1 = canData[1];
+                    prevFanTime_1 = millis();
+                    break;
+                case 2:
+                    digitalWrite(PIN_FAN_2, HIGH);
+                    fanOn_2 = 1;
+                    fanTimer_2 = canData[1];
+                    prevFanTime_2 = millis();
+                    break;
+                case 3:
+                    digitalWrite(PIN_FAN_3, HIGH);
+                    fanOn_3 = 1;
+                    fanTimer_3 = canData[1];
+                    prevFanTime_3 = millis();
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
     }
 
     //------------------//
