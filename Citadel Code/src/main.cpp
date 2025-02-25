@@ -6,6 +6,10 @@
  *
  */
 
+// WARNING: You must edit
+// `Citadel Code/.pio/libdeps/adafruit_feather_esp32_v2/Lynxmotion Smart Servo -LSS-/src/LSS.h`
+// comment out line 18. This will fix the error on line 167 (myLSS:initBus)
+
 //------------//
 //  Includes  //
 //------------//
@@ -164,7 +168,7 @@ void setup()
     servo2.attach(PIN_PWMSERVO_2);
     servo3.attach(PIN_PWMSERVO_3);
 
-    LSS::initBus(Serial_LSS, LSS_BAUD);
+    myLSS.initBus(Serial_LSS, LSS_BAUD);
     myLSS.setAngularStiffness(0);
     myLSS.setAngularHoldingStiffness(0);
     myLSS.setAngularAcceleration(15);
@@ -236,20 +240,37 @@ void loop()
             Serial.println("Received ping over CAN");
         }
 
+        else if (commandID == CMD_LSS_TURNBY_DEG)
+        {
+
+            if (canData.size() == 1)
+            {
+                if (canData[0] == -1) {
+                    myLSS.wheel(-20);
+                }
+                else if (canData[0] == 0) {
+                    myLSS.wheel(0);
+                }
+                else if (canData[0] == 1) {
+                    myLSS.wheel(20);
+                }
+            }
+        }
+
         else if (commandID == CMD_PWMSERVO_SET_DEG)
         {
             if (canData.size() == 2)
             {
-                switch (int(canData[0]))
+                switch (static_cast<int>(canData[0]))
                 {
                 case 1:
-                    servo1.write(int(canData[1]));
+                    servo1.write(canData[1]);
                     break;
                 case 2:
-                    servo2.write(int(canData[1]));
+                    servo2.write(canData[1]);
                     break;
                 case 3:
-                    servo2.write(int(canData[1]));
+                    servo3.write(canData[1]);
                     break;
                 default:
                     break;
@@ -257,36 +278,14 @@ void loop()
             }
         }
 
-        else if (commandID == CMD_LSS_TURNBY_DEG)
+        else if (commandID == CMD_DCMOTOR_CTRL)
         {
-
             if (canData.size() == 1)
             {
-                switch (int(canData[0]))
-                {
-                case -900:
-                myLSS.move(-900);
-                Serial.println("Full Retractig CITADEL arm");
-                break;
-                case 0:
-                myLSS.move(0);
-                Serial.println("Setting arm to half extend");
-                break;
-                case 20:
-                myLSS.moveRelative(20);
-                Serial.println("Extending CITADEL arm");
-                break;
-                case -20:
-                myLSS.moveRelative(-20);
-                Serial.println("Extending CITADEL arm");
-                break;
-                case 2:
-                myLSS.reset();
-                Serial.println("Servo Reset");
-                break;
-                default:
-                break;
-                }
+                if (canData[0] == 1)
+                    digitalWrite(PIN_VIBMOTOR, HIGH);
+                else if (canData[0] == 0)
+                    digitalWrite(PIN_VIBMOTOR, LOW);
             }
         }
 
@@ -298,17 +297,6 @@ void loop()
 
         //   }
         // }
-
-        else if (commandID == CMD_DCMOTOR_CTRL)
-        {
-            if (canData.size() == 1)
-            {
-                if (bool(canData[0]))
-                    digitalWrite(PIN_VIBMOTOR, HIGH);
-                else
-                    digitalWrite(PIN_VIBMOTOR, LOW);
-            }
-        }
     }
 
     //------------------//
