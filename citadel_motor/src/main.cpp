@@ -13,6 +13,7 @@
 #include "project/CITADEL.h"
 #include <AccelStepper.h>
 
+
 //------------//
 //  Settings  //
 //------------//
@@ -20,86 +21,40 @@
 // Comment out to disable LED blinking
 #define BLINK
 
-#define COMMS_UART Serial // Serial1 to talk to main mcu
-#define dirPin1 14
-#define stepPin1 32
-#define dirPin2 15
-#define stepPin2 33
-#define dirPin3 12
-#define stepPin3 27
-#define dirPin4 20
-#define stepPin4 22
-#define motorInterfaceType 1
+#define COMMS_UART Serial1 // Serial1 to talk to main mcu
+
 
 //---------------------//
 //  Component classes  //
 //---------------------//
 
-AccelStepper stepper1 = AccelStepper(motorInterfaceType, stepPin1, dirPin1);
-AccelStepper stepper2 = AccelStepper(motorInterfaceType, stepPin2, dirPin2);
-AccelStepper stepper3 = AccelStepper(motorInterfaceType, stepPin3, dirPin3);
-AccelStepper stepper4 = AccelStepper(motorInterfaceType, stepPin4, dirPin4);
+AccelStepper stepper1 = AccelStepper(1, PIN_STEP_1_STEP, PIN_STEP_1_DIR);
+AccelStepper stepper2 = AccelStepper(1, PIN_STEP_2_STEP, PIN_STEP_2_DIR);
+AccelStepper stepper3 = AccelStepper(1, PIN_STEP_3_STEP, PIN_STEP_3_DIR);
+AccelStepper stepper4 = AccelStepper(1, PIN_STEP_4_STEP, PIN_STEP_4_DIR);
+
 hw_timer_t *Timer0_Cfg = NULL;
 bool pump1On = 0, pump2On = 0, pump3On = 0, pump4On = 0;
-int pos1, pos2, pos3, pos4;
+int pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+
 
 //----------//
 //  Timing  //
 //----------//
-void IRAM_ATTR Timer0_ISR()
-{
-    if (Serial.available())
-    {
-        String input = Serial.readStringUntil('\n');
 
-        input.trim();                  // Remove preceding and trailing whitespace
-        std::vector<String> args = {}; // Initialize empty vector to hold separated arguments
-        parseInput(input, args, ',');  // Separate `input` by commas and place into args vector
-        args[0].toLowerCase();         // Make command case-insensitive
-        String command = args[0];      // To make processing code more readable
+uint32_t lastBlink = 0;
+bool ledState = false;
 
-        //--------//
-        //  Misc  //
-        //--------//
-        /**/
-        if (args[0] == "ping")
-            Serial.println("pong");
-        else if (args[0] == "pump")
-        {
-            switch (args[1].toInt())
-            {
-            case 1:
-                pump1On = 1;
-                pos1 = args[2].toInt();
-                break;
-            case 2:
-                pump2On = 1;
-                pos2 = args[2].toInt();
-                break;
-            case 3:
-                pump3On = 1;
-                pos3 = args[2].toInt();
-                break;
-            case 4:
-                pump4On = 1;
-                pos4 = args[2].toInt();
-                break;
-            }
-        }
+// void IRAM_ATTR Timer0_ISR()
+// {
+    
+// }
 
-        //-----------//
-        //  Sensors  //
-        //-----------//
-
-        //----------//
-        //  Motors  //
-        //----------//
-    }
-}
 
 //--------------//
 //  Prototypes  //
 //--------------//
+
 
 //------------------------------------------------------------------------------------------------//
 //  Setup
@@ -123,19 +78,27 @@ void setup()
     //  Pins  //
     //--------//
 
+    pinMode(PIN_M0, OUTPUT);
+    pinMode(PIN_M1, OUTPUT);
+    digitalWrite(PIN_M0, LOW);
+    digitalWrite(PIN_M1, LOW);
+
     //------------------//
     //  Communications  //
     //------------------//
 
-    Serial.begin(115200);
-    while (!Serial)
-        ;
-    Serial.print("Ready");
+    COMMS_UART.begin(COMMS_UART_BAUD);
+    COMMS_UART.print("Ready");
+
+    //-----------//
+    //  Sensors  //
+    //-----------//
+
+    //--------------------//
+    //  Misc. Components  //
+    //--------------------//
+
     // stepper.setMaxSpeed(1000);
-    pinMode(5, OUTPUT);
-    pinMode(19, OUTPUT);
-    digitalWrite(5, LOW);
-    digitalWrite(19, LOW);
     stepper1.setMaxSpeed(1000);
     stepper2.setMaxSpeed(1000);
     stepper3.setMaxSpeed(1000);
@@ -148,18 +111,11 @@ void setup()
     // stepper2.setCurrentPosition(0);
     // stepper3.setCurrentPosition(0);
     // stepper4.setCurrentPosition(0);
-    Timer0_Cfg = timerBegin(0, 80, true);
-    timerAttachInterrupt(Timer0_Cfg, &Timer0_ISR, true);
-    timerAlarmWrite(Timer0_Cfg, 1000, true);
-    timerAlarmEnable(Timer0_Cfg);
 
-    //-----------//
-    //  Sensors  //
-    //-----------//
-
-    //--------------------//
-    //  Misc. Components  //
-    //--------------------//
+    // Timer0_Cfg = timerBegin(0, 80, true);
+    // timerAttachInterrupt(Timer0_Cfg, &Timer0_ISR, true);
+    // timerAlarmWrite(Timer0_Cfg, 1000, true);
+    // timerAlarmEnable(Timer0_Cfg);
 }
 
 //------------------------------------------------------------------------------------------------//
@@ -183,10 +139,35 @@ void loop()
     //----------//
     //  Timers  //
     //----------//
+#ifdef BLINK
+    if (millis() - lastBlink > 1000) {
+        lastBlink = millis();
+        ledState = !ledState;
+        digitalWrite(LED_BUILTIN, ledState);
+    }
+#endif
+
+    if (pump1On)
+    {
+        stepper1.moveTo(pos1);
+        while (stepper1.currentPosition() != pos1)
+        {
+            stepper1.run();
+        }
+        stepper1.moveTo(0);
+        while (stepper1.currentPosition() != 0)
+        {
+            stepper1.run();
+        }
+        pump1On = 0;
+    }
 
     //-------------//
     //  CAN Input  //
     //-------------//
+
+    // No CAN input for Citadel motor mcu
+
 
     //------------------//
     //  UART/USB Input  //
@@ -205,44 +186,54 @@ void loop()
     //                                                       //
     //-------------------------------------------------------//
 
-    // if (Serial.available())
-    // {
-    //     String input = Serial.readStringUntil('\n');
-
-    //     input.trim();                  // Remove preceding and trailing whitespace
-    //     std::vector<String> args = {}; // Initialize empty vector to hold separated arguments
-    //     parseInput(input, args, ',');  // Separate `input` by commas and place into args vector
-    //     args[0].toLowerCase();         // Make command case-insensitive
-    //     String command = args[0];      // To make processing code more readable
-
-    //     //--------//
-    //     //  Misc  //
-    //     //--------//
-    //     /**/
-
-    //     //-----------//
-    //     //  Sensors  //
-    //     //-----------//
-
-    //     //----------//
-    //     //  Motors  //
-    //     //----------//
-    // }
-
-    if(pump1On)
+    if (COMMS_UART.available())
     {
-        stepper1.moveTo(pos1);
-        while(stepper1.currentPosition() != pos1)
-        {
-            stepper1.run();
+        String input = COMMS_UART.readStringUntil('\n');
+
+        input.trim();                  // Remove preceding and trailing whitespace
+        std::vector<String> args = {}; // Initialize empty vector to hold separated arguments
+        parseInput(input, args, ',');  // Separate `input` by commas and place into args vector
+        args[0].toLowerCase();         // Make command case-insensitive
+        String command = args[0];      // To make processing code more readable
+
+        //--------//
+        //  Misc  //
+        //--------//
+        /**/ if (args[0] == "ping") {
+            COMMS_UART.println("pong");
         }
-        stepper1.moveTo(0);
-        while(stepper1.currentPosition() != 0)
+
+        //-----------//
+        //  Sensors  //
+        //-----------//
+
+        //----------//
+        //  Motors  //
+        //----------//
+
+        else if (args[0] == "pump")
         {
-            stepper1.run();
+            switch (args[1].toInt())
+            {
+            case 1:
+                pump1On = 1;
+                pos1 = args[2].toInt();
+                break;
+            case 2:
+                pump2On = 1;
+                pos2 = args[2].toInt();
+                break;
+            case 3:
+                pump3On = 1;
+                pos3 = args[2].toInt();
+                break;
+            case 4:
+                pump4On = 1;
+                pos4 = args[2].toInt();
+                break;
+            }
         }
-        pump1On=0;
-    }
+    }    
 }
 
 //------------------------------------------------------------------------------------------------//
