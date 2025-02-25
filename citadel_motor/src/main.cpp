@@ -39,9 +39,63 @@ AccelStepper stepper1 = AccelStepper(motorInterfaceType, stepPin1, dirPin1);
 AccelStepper stepper2 = AccelStepper(motorInterfaceType, stepPin2, dirPin2);
 AccelStepper stepper3 = AccelStepper(motorInterfaceType, stepPin3, dirPin3);
 AccelStepper stepper4 = AccelStepper(motorInterfaceType, stepPin4, dirPin4);
+hw_timer_t *Timer0_Cfg = NULL;
+bool pump1On = 0, pump2On = 0, pump3On = 0, pump4On = 0;
+int pos1, pos2, pos3, pos4;
+
 //----------//
 //  Timing  //
 //----------//
+void IRAM_ATTR Timer0_ISR()
+{
+    if (Serial.available())
+    {
+        String input = Serial.readStringUntil('\n');
+
+        input.trim();                  // Remove preceding and trailing whitespace
+        std::vector<String> args = {}; // Initialize empty vector to hold separated arguments
+        parseInput(input, args, ',');  // Separate `input` by commas and place into args vector
+        args[0].toLowerCase();         // Make command case-insensitive
+        String command = args[0];      // To make processing code more readable
+
+        //--------//
+        //  Misc  //
+        //--------//
+        /**/
+        if (args[0] == "ping")
+            Serial.println("pong");
+        else if (args[0] == "pump")
+        {
+            switch (args[1].toInt())
+            {
+            case 1:
+                pump1On = 1;
+                pos1 = args[2].toInt();
+                break;
+            case 2:
+                pump2On = 1;
+                pos2 = args[2].toInt();
+                break;
+            case 3:
+                pump3On = 1;
+                pos3 = args[2].toInt();
+                break;
+            case 4:
+                pump4On = 1;
+                pos4 = args[2].toInt();
+                break;
+            }
+        }
+
+        //-----------//
+        //  Sensors  //
+        //-----------//
+
+        //----------//
+        //  Motors  //
+        //----------//
+    }
+}
 
 //--------------//
 //  Prototypes  //
@@ -72,10 +126,10 @@ void setup()
     //------------------//
     //  Communications  //
     //------------------//
-    
+
     Serial.begin(115200);
     while (!Serial)
-    ;
+        ;
     Serial.print("Ready");
     // stepper.setMaxSpeed(1000);
     pinMode(5, OUTPUT);
@@ -87,14 +141,17 @@ void setup()
     stepper3.setMaxSpeed(1000);
     stepper4.setMaxSpeed(1000);
     stepper1.setAcceleration(200);
-    stepper2.setAcceleration(200);
-    stepper3.setAcceleration(200);
-    stepper4.setAcceleration(200);
-    stepper1.setCurrentPosition(0);
-    stepper2.setCurrentPosition(0);
-    stepper3.setCurrentPosition(0);
-    stepper4.setCurrentPosition(0);
-    
+    // stepper2.setAcceleration(200);
+    // stepper3.setAcceleration(200);
+    // stepper4.setAcceleration(200);
+    // stepper1.setCurrentPosition(0);
+    // stepper2.setCurrentPosition(0);
+    // stepper3.setCurrentPosition(0);
+    // stepper4.setCurrentPosition(0);
+    Timer0_Cfg = timerBegin(0, 80, true);
+    timerAttachInterrupt(Timer0_Cfg, &Timer0_ISR, true);
+    timerAlarmWrite(Timer0_Cfg, 1000, true);
+    timerAlarmEnable(Timer0_Cfg);
 
     //-----------//
     //  Sensors  //
@@ -147,59 +204,44 @@ void loop()
     //      /////////    //            //    //////////      //
     //                                                       //
     //-------------------------------------------------------//
-    if (Serial.available())
+
+    // if (Serial.available())
+    // {
+    //     String input = Serial.readStringUntil('\n');
+
+    //     input.trim();                  // Remove preceding and trailing whitespace
+    //     std::vector<String> args = {}; // Initialize empty vector to hold separated arguments
+    //     parseInput(input, args, ',');  // Separate `input` by commas and place into args vector
+    //     args[0].toLowerCase();         // Make command case-insensitive
+    //     String command = args[0];      // To make processing code more readable
+
+    //     //--------//
+    //     //  Misc  //
+    //     //--------//
+    //     /**/
+
+    //     //-----------//
+    //     //  Sensors  //
+    //     //-----------//
+
+    //     //----------//
+    //     //  Motors  //
+    //     //----------//
+    // }
+
+    if(pump1On)
     {
-        String input = Serial.readStringUntil('\n');
-
-        input.trim();                  // Remove preceding and trailing whitespace
-        std::vector<String> args = {}; // Initialize empty vector to hold separated arguments
-        parseInput(input, args, ',');  // Separate `input` by commas and place into args vector
-        args[0].toLowerCase();         // Make command case-insensitive
-        String command = args[0];      // To make processing code more readable
-
-        //--------//
-        //  Misc  //
-        //--------//
-        /**/
-        if (args[0] == "ping")
-            Serial.println("pong");
-        else if (args[0] == "pump")
+        stepper1.moveTo(pos1);
+        while(stepper1.currentPosition() != pos1)
         {
-            Serial.println("Reached pump condition");
-            switch(args[1].toInt())
-            {
-                case 1:
-                stepper1.moveTo(args[2].toInt());
-                stepper1.runSpeedToPosition();
-                stepper1.moveTo(0);
-                break;
-                case 2:
-                stepper2.moveTo(args[2].toInt());
-                stepper2.runSpeedToPosition();
-                stepper2.moveTo(0);
-                break;
-                case 3:
-                stepper3.moveTo(args[2].toInt());
-                stepper3.runSpeedToPosition();
-                stepper3.moveTo(0);
-                break;
-                case 4:
-                stepper4.moveTo(args[2].toInt());
-                stepper4.runSpeedToPosition();
-                stepper4.moveTo(0);
-                break;
-                default:
-                break;
-            }
+            stepper1.run();
         }
-
-        //-----------//
-        //  Sensors  //
-        //-----------//
-
-        //----------//
-        //  Motors  //
-        //----------//
+        stepper1.moveTo(0);
+        while(stepper1.currentPosition() != 0)
+        {
+            stepper1.run();
+        }
+        pump1On=0;
     }
 }
 
