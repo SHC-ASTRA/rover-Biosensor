@@ -383,20 +383,19 @@ void loop()
         //----------//
 
         // Fan
-        if (args[0] == "fans")
-        { // Is looking for a command that looks like "fan,0,0,0,time"
-
+        if (args[0] == "fans")  // Is looking for a command that looks like "fans,1,time"
+        {
             COMMS_UART.println(args[0]);
-            digitalWrite(PIN_FAN_1, args[2].toInt());
-            digitalWrite(PIN_FAN_2, args[2].toInt());
-            digitalWrite(PIN_FAN_3, args[2].toInt());
+            digitalWrite(PIN_FAN_1, args[1].toInt());
+            digitalWrite(PIN_FAN_2, args[1].toInt());
+            digitalWrite(PIN_FAN_3, args[1].toInt());
             fansOn = 1;
-            fansTimer = args[1].toInt();
+            fansTimer = args[2].toInt();
             prevFanTime = millis();
             COMMS_UART.println("Fans Activated");
         }
 
-        else if (args[0] == "fan")
+        else if (args[0] == "fan")  // Is looking for a command that looks like "fan,2,1,time"
         {
             COMMS_UART.println("Reached fan");
             switch (args[1].toInt())
