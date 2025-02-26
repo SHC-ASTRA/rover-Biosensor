@@ -109,6 +109,7 @@ void setup() {
     digitalWrite(LED_BUILTIN, LOW);
 
     pinMode(PIN_LASERS, OUTPUT);
+    digitalWrite(PIN_LASERS, HIGH);  // HIGH by default at Mason's request
 
 
     //------------------//
@@ -168,11 +169,11 @@ void loop() {
 #endif
 
     // Telemetry
-    if (millis() - lastDataSend >= 1000) {
-        lastDataSend = millis();
+    // if (millis() - lastDataSend >= 1000) {
+    //     lastDataSend = millis();
 
-        Serial.println(getSHTData());
-    }
+    //     Serial.println(getSHTData());
+    // }
 
     // SCABBARD Shake
     if (shakeMode && millis() - lastShake >= SHAKEINTERVAL) {
@@ -194,7 +195,8 @@ void loop() {
     // Motor timeout
     if (millis() - lastCtrlCmd >= 2000) {
         lastCtrlCmd = millis();
-        neo550.write(0);
+        neo550.writeMicroseconds((REV_PWM_MIN + REV_PWM_MAX) / 2);
+        digitalWrite(PIN_LASERS, LOW);
     }
 
 
@@ -287,7 +289,7 @@ void loop() {
             lastCtrlCmd = millis();
 
             /**/ if (args[1] == "scabbard") {
-                neo550.writeMicroseconds(args[2].toFloat());
+                neo550.writeMicroseconds(map_d(args[2].toFloat(), -1.0, 1.0, REV_PWM_MIN, REV_PWM_MAX));
             }
 
             else if (args[1] == "shake") {
@@ -315,10 +317,11 @@ void loop() {
 
             shakeMode = false;
             neo550.write(0);
+            digitalWrite(PIN_LASERS, LOW);
         }
 
         else if (command == "laser") {
-            if (args[2] == "on")
+            if (args[1] == "on")
                 digitalWrite(PIN_LASERS, HIGH);
             else
                 digitalWrite(PIN_LASERS, LOW);
