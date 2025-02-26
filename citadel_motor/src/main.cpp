@@ -45,15 +45,91 @@ int pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
 uint32_t lastBlink = 0;
 bool ledState = false;
 
-// void IRAM_ATTR Timer0_ISR()
-// {
-    
-// }
-
 
 //--------------//
 //  Prototypes  //
 //--------------//
+
+int mL2Steps(float volume);
+
+void IRAM_ATTR Timer0_ISR()
+{
+    //------------------//
+    //  UART/USB Input  //
+    //------------------//
+    //
+    //
+    //-------------------------------------------------------//
+    //                                                       //
+    //      /////////    //\\        ////    //////////      //
+    //    //             //  \\    //  //    //        //    //
+    //    //             //    \\//    //    //        //    //
+    //    //             //            //    //        //    //
+    //    //             //            //    //        //    //
+    //    //             //            //    //        //    //
+    //      /////////    //            //    //////////      //
+    //                                                       //
+    //-------------------------------------------------------//
+    if (COMMS_UART.available())
+    {
+        String input = COMMS_UART.readStringUntil('\n');
+
+        input.trim();                  // Remove preceding and trailing whitespace
+        std::vector<String> args = {}; // Initialize empty vector to hold separated arguments
+        parseInput(input, args, ',');  // Separate `input` by commas and place into args vector
+        args[0].toLowerCase();         // Make command case-insensitive
+        String command = args[0];      // To make processing code more readable
+
+        //--------//
+        //  Misc  //
+        //--------//
+        /**/ if (args[0] == "ping") {
+            COMMS_UART.println("pong");
+        }
+
+        //-----------//
+        //  Sensors  //
+        //-----------//
+
+        //----------//
+        //  Motors  //
+        //----------//
+
+        else if (args[0] == "stop") {
+            stepper1.stop();
+            stepper2.stop();
+            stepper3.stop();
+            stepper4.stop();
+            pump1On = false;
+            pump2On = false;
+            pump3On = false;
+            pump4On = false;
+        }
+
+        else if (args[0] == "pump")
+        {
+            switch (args[1].toInt())
+            {
+            case 1:
+                pump1On = true;
+                pos1 = mL2Steps(args[2].toFloat());
+                break;
+            case 2:
+                pump2On = true;
+                pos2 = mL2Steps(args[2].toFloat());
+                break;
+            case 3:
+                pump3On = true;
+                pos3 = mL2Steps(args[2].toFloat());
+                break;
+            case 4:
+                pump4On = true;
+                pos4 = mL2Steps(args[2].toFloat());
+                break;
+            }
+        }
+    } 
+}
 
 
 //------------------------------------------------------------------------------------------------//
@@ -112,10 +188,10 @@ void setup()
     // stepper3.setCurrentPosition(0);
     // stepper4.setCurrentPosition(0);
 
-    // Timer0_Cfg = timerBegin(0, 80, true);
-    // timerAttachInterrupt(Timer0_Cfg, &Timer0_ISR, true);
-    // timerAlarmWrite(Timer0_Cfg, 1000, true);
-    // timerAlarmEnable(Timer0_Cfg);
+    Timer0_Cfg = timerBegin(0, 80, true);
+    timerAttachInterrupt(Timer0_Cfg, &Timer0_ISR, true);
+    timerAlarmWrite(Timer0_Cfg, 1000, true);
+    timerAlarmEnable(Timer0_Cfg);
 }
 
 //------------------------------------------------------------------------------------------------//
@@ -159,7 +235,56 @@ void loop()
         {
             stepper1.run();
         }
-        pump1On = 0;
+        pump1On = false;
+        COMMS_UART.println("Finished.");
+    }
+
+    if (pump2On)
+    {
+        stepper2.moveTo(pos2);
+        while (stepper2.currentPosition() != pos2)
+        {
+            stepper2.run();
+        }
+        stepper2.moveTo(0);
+        while (stepper2.currentPosition() != 0)
+        {
+            stepper2.run();
+        }
+        pump2On = false;
+        COMMS_UART.println("Finished.");
+    }
+
+    if (pump3On)
+    {
+        stepper3.moveTo(pos3);
+        while (stepper3.currentPosition() != pos3)
+        {
+            stepper3.run();
+        }
+        stepper3.moveTo(0);
+        while (stepper3.currentPosition() != 0)
+        {
+            stepper3.run();
+        }
+        pump3On = false;
+        COMMS_UART.println("Finished.");
+    }
+
+    if (pump4On)
+    {
+        stepper4.moveTo(pos4);
+        while (stepper4.currentPosition() != pos4)
+        {
+            stepper4.run();
+        }
+        stepper4.moveTo(0);
+        while (stepper4.currentPosition() != 0)
+        {
+            stepper4.run();
+        }
+        pump4On = false;
+        COMMS_UART.println("Finished.");
     }
 
     //-------------//
@@ -168,72 +293,7 @@ void loop()
 
     // No CAN input for Citadel motor mcu
 
-
-    //------------------//
-    //  UART/USB Input  //
-    //------------------//
-    //
-    //
-    //-------------------------------------------------------//
-    //                                                       //
-    //      /////////    //\\        ////    //////////      //
-    //    //             //  \\    //  //    //        //    //
-    //    //             //    \\//    //    //        //    //
-    //    //             //            //    //        //    //
-    //    //             //            //    //        //    //
-    //    //             //            //    //        //    //
-    //      /////////    //            //    //////////      //
-    //                                                       //
-    //-------------------------------------------------------//
-
-    if (COMMS_UART.available())
-    {
-        String input = COMMS_UART.readStringUntil('\n');
-
-        input.trim();                  // Remove preceding and trailing whitespace
-        std::vector<String> args = {}; // Initialize empty vector to hold separated arguments
-        parseInput(input, args, ',');  // Separate `input` by commas and place into args vector
-        args[0].toLowerCase();         // Make command case-insensitive
-        String command = args[0];      // To make processing code more readable
-
-        //--------//
-        //  Misc  //
-        //--------//
-        /**/ if (args[0] == "ping") {
-            COMMS_UART.println("pong");
-        }
-
-        //-----------//
-        //  Sensors  //
-        //-----------//
-
-        //----------//
-        //  Motors  //
-        //----------//
-
-        else if (args[0] == "pump")
-        {
-            switch (args[1].toInt())
-            {
-            case 1:
-                pump1On = 1;
-                pos1 = args[2].toInt();
-                break;
-            case 2:
-                pump2On = 1;
-                pos2 = args[2].toInt();
-                break;
-            case 3:
-                pump3On = 1;
-                pos3 = args[2].toInt();
-                break;
-            case 4:
-                pump4On = 1;
-                pos4 = args[2].toInt();
-                break;
-            }
-        }
-    }    
+    // Serial input moved to timer
 }
 
 //------------------------------------------------------------------------------------------------//
@@ -252,3 +312,10 @@ void loop()
 //    //            //          //      //////////    //
 //                                                    //
 //----------------------------------------------------//
+
+// Resolution: 285 uL
+int mL2Steps(float volume) {
+    const float mLPerRev = 1.14009;
+    const int stepsPerRev = 4;  // M0 = 0, M1 = 0
+    return static_cast<int>(volume / mLPerRev * stepsPerRev);
+}
