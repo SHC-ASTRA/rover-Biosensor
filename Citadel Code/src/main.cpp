@@ -40,7 +40,7 @@
 // Comment out to disable LED blinking
 #define BLINK
 
-#define LSS_ID 3  // TODO: verify
+#define LSS_ID 254
 #define MOTOR_UART Serial1
 
 #define COMMS_UART Serial1  // Currently using motor MCU as USB-UART converter............. fml
@@ -105,11 +105,11 @@ void IRAM_ATTR Timer0_ISR()
 }
 
 // Blink
-void IRAM_ATTR Timer1_ISR()
-{
-    ledState = !ledState;
-    digitalWrite(LED_BUILTIN, ledState);
-}
+// void IRAM_ATTR Timer1_ISR()
+// {
+//     ledState = !ledState;
+//     digitalWrite(LED_BUILTIN, ledState);
+// }
 
 
 //--------------//
@@ -176,7 +176,7 @@ void setup()
     servo2.attach(PIN_PWMSERVO_2);
     servo3.attach(PIN_PWMSERVO_3);
 
-    myLSS.initBus(Serial_LSS, LSS_BAUD);
+    LSS::initBus(Serial_LSS, LSS_BAUD);
     myLSS.setAngularStiffness(0);
     myLSS.setAngularHoldingStiffness(0);
     myLSS.setAngularAcceleration(15);
@@ -188,10 +188,10 @@ void setup()
     timerAlarmWrite(Timer0_Cfg, 5000, true);
     timerAlarmEnable(Timer0_Cfg);
 
-    Timer1_Cfg = timerBegin(1, 80, true);
-    timerAttachInterrupt(Timer1_Cfg, &Timer1_ISR, true);
-    timerAlarmWrite(Timer1_Cfg, 100000, true);
-    timerAlarmEnable(Timer1_Cfg);
+    // Timer1_Cfg = timerBegin(1, 80, true);
+    // timerAttachInterrupt(Timer1_Cfg, &Timer1_ISR, true);
+    // timerAlarmWrite(Timer1_Cfg, 100000, true);
+    // timerAlarmEnable(Timer1_Cfg);
 
     COMMS_UART.println("timers have started");
 }
