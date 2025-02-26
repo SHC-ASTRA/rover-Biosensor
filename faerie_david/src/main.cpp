@@ -407,7 +407,7 @@ void loop() {
             lastCtrlCmd = millis();
 
             shakeMode = false;
-            neo550.write(0);
+            neo550.write((REV_PWM_MIN + REV_PWM_MAX) / 2);
             digitalWrite(PIN_LASERS, LOW);
         }
 
