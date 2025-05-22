@@ -174,17 +174,6 @@ void setup()
     myLSS.setAngularDeceleration(15);
     COMMS_UART.println("Smart servo has started");
 
-    Timer0_Cfg = timerBegin(0, 80, true);
-    timerAttachInterrupt(Timer0_Cfg, &Timer0_ISR, true);
-    timerAlarmWrite(Timer0_Cfg, 5000, true);
-    timerAlarmEnable(Timer0_Cfg);
-
-    // Timer1_Cfg = timerBegin(1, 80, true);
-    // timerAttachInterrupt(Timer1_Cfg, &Timer1_ISR, true);
-    // timerAlarmWrite(Timer1_Cfg, 100000, true);
-    // timerAlarmEnable(Timer1_Cfg);
-
-    COMMS_UART.println("timers have started");
 }
 
 
@@ -209,6 +198,33 @@ void loop()
     //----------//
     //  Timers  //
     //----------//
+
+    if (fansOn && (millis() - prevFanTime >= fansTimer))
+    {
+        digitalWrite(PIN_FAN_1, LOW);
+        digitalWrite(PIN_FAN_2, LOW);
+        digitalWrite(PIN_FAN_3, LOW);
+        fansOn = 0;
+        fansTimer = 0;
+    }
+    else if (fanOn_1 && (millis() - prevFanTime_1 >= fanTimer_1))
+    {
+        digitalWrite(PIN_FAN_1, LOW);
+        fanOn_1 = 0;
+        fanTimer_1 = 0;
+    }
+    else if (fanOn_2 && (millis() - prevFanTime_2 >= fanTimer_2))
+    {
+        digitalWrite(PIN_FAN_2, LOW);
+        fanOn_2 = 0;
+        fanTimer_2 = 0;
+    }
+    else if (fanOn_3 && (millis() - prevFanTime_3 >= fanTimer_3))
+    {
+        digitalWrite(PIN_FAN_3, LOW);
+        fanOn_3 = 0;
+        fanTimer_3 = 0;
+    }
 
     //-------------//
     //  CAN input  //
