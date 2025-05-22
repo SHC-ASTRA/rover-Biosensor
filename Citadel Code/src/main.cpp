@@ -32,10 +32,6 @@
 #define BLINK
 
 #define LSS_ID 254
-#define MOTOR_UART Serial1
-
-#define COMMS_UART Serial1  // Currently using motor MCU as USB-UART converter............. fml
-
 
 //---------------------//
 //  Component classes  //
@@ -61,47 +57,6 @@ unsigned long pumpTimer, pumpsTimer, pumpTimer_1, pumpTimer_2, pumpTimer_3;
 bool fansOn = 0, fanOn_1 = 0, fanOn_2 = 0, fanOn_3 = 0; // 1 = long = 2seconds, 0 = short = 0.5s
 bool pumpON = 0, pumpON_1 = 0, pumpON_2 = 0, pumpON_3 = 0;
 unsigned long prevFanTime = 0, prevFanTime_1 = 0, prevFanTime_2 = 0, prevFanTime_3 = 0;
-
-// Fans
-void IRAM_ATTR Timer0_ISR()
-{
-    // portENTER_CRITICAL_ISR(&timer0Mux);
-    if (fansOn && (millis() - prevFanTime >= fansTimer))
-    {
-        digitalWrite(PIN_FAN_1, LOW);
-        digitalWrite(PIN_FAN_2, LOW);
-        digitalWrite(PIN_FAN_3, LOW);
-        fansOn = 0;
-        fansTimer = 0;
-    }
-    else if (fanOn_1 && (millis() - prevFanTime_1 >= fanTimer_1))
-    {
-        digitalWrite(PIN_FAN_1, LOW);
-        fanOn_1 = 0;
-        fanTimer_1 = 0;
-    }
-    else if (fanOn_2 && (millis() - prevFanTime_2 >= fanTimer_2))
-    {
-        digitalWrite(PIN_FAN_2, LOW);
-        fanOn_2 = 0;
-        fanTimer_2 = 0;
-    }
-    else if (fanOn_3 && (millis() - prevFanTime_3 >= fanTimer_3))
-    {
-        digitalWrite(PIN_FAN_3, LOW);
-        fanOn_3 = 0;
-        fanTimer_3 = 0;
-    }
-    // portEXIT_CRITICAL_ISR(&timer0Mux);
-}
-
-// Blink
-// void IRAM_ATTR Timer1_ISR()
-// {
-//     ledState = !ledState;
-//     digitalWrite(LED_BUILTIN, ledState);
-// }
-
 
 //--------------//
 //  Prototypes  //
@@ -149,7 +104,7 @@ void setup()
     //  Communications  //
     //------------------//
 
-    COMMS_UART.begin(COMMS_UART_BAUD);
+    Serial.begin(SERIAL_BAUD);
 
     ESP32Can.begin(TWAI_SPEED_1000KBPS, PIN_CTX, PIN_CRX);
 
@@ -172,7 +127,7 @@ void setup()
     myLSS.setAngularHoldingStiffness(0);
     myLSS.setAngularAcceleration(15);
     myLSS.setAngularDeceleration(15);
-    COMMS_UART.println("Smart servo has started");
+    Serial.println("Smart servo has started");
 
 }
 
@@ -355,10 +310,10 @@ void loop()
     //      /////////    //            //    //////////      //
     //                                                       //
     //-------------------------------------------------------//
-    if (COMMS_UART.available())
+    if (Serial.available())
     {
-        String input = COMMS_UART.readStringUntil('\n');
-        COMMS_UART.println(input);
+        String input = Serial.readStringUntil('\n');
+        Serial.println(input);
 
         input.trim();                    // Remove preceding and trailing whitespace
         std::vector<String> args = {}; // Initialize empty vector to hold separated arguments
@@ -371,12 +326,12 @@ void loop()
         //--------//
         /**/ if (command == "ping")
         {
-            COMMS_UART.println("pong");
+            Serial.println("pong");
         }
 
         else if (command == "time")
         {
-            COMMS_UART.println(millis());
+            Serial.println(millis());
         }
 
         else if (command == "led")
@@ -413,19 +368,19 @@ void loop()
         // Fan
         if (args[0] == "fans")  // Is looking for a command that looks like "fans,1,time"
         {
-            COMMS_UART.println(args[0]);
+            Serial.println(args[0]);
             digitalWrite(PIN_FAN_1, args[1].toInt());
             digitalWrite(PIN_FAN_2, args[1].toInt());
             digitalWrite(PIN_FAN_3, args[1].toInt());
             fansOn = 1;
             fansTimer = args[2].toInt();
             prevFanTime = millis();
-            COMMS_UART.println("Fans Activated");
+            Serial.println("Fans Activated");
         }
 
         else if (args[0] == "fan")  // Is looking for a command that looks like "fan,2,1,time"
         {
-            COMMS_UART.println("Reached fan");
+            Serial.println("Reached fan");
             switch (args[1].toInt())
             {
             case 1:
@@ -449,7 +404,7 @@ void loop()
             default:
                 break;
             }
-            COMMS_UART.println("Fan Activated");
+            Serial.println("Fan Activated");
         }
         
         else if (args[0] == "servo")
