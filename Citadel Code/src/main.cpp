@@ -46,6 +46,7 @@ LSS myLSS = LSS(LSS_ID);
 hw_timer_t *Timer0_Cfg = NULL, *Timer1_Cfg = NULL;
 Servo servo1, servo2, servo3;
 
+AccelStepper stepper1 = AccelStepper(motorInterfaceType, PIN_STEP_1, PIN_STEP_DIR);
 
 //----------//
 //  Timing  //
@@ -55,7 +56,7 @@ bool ledState = false;
 unsigned long fanTimer, fansTimer, fanTimer_1, fanTimer_2, fanTimer_3;
 unsigned long pumpTimer, pumpsTimer, pumpTimer_1, pumpTimer_2, pumpTimer_3;
 bool fansOn = 0, fanOn_1 = 0, fanOn_2 = 0, fanOn_3 = 0; // 1 = long = 2seconds, 0 = short = 0.5s
-bool pumpON = 0, pumpON_1 = 0, pumpON_2 = 0, pumpON_3 = 0;
+bool pump1On = 0, pump2On = 0, pump3On = 0, pump4On = 0;
 unsigned long prevFanTime = 0, prevFanTime_1 = 0, prevFanTime_2 = 0, prevFanTime_3 = 0;
 
 //--------------//
@@ -261,9 +262,10 @@ void loop()
 
         else if (commandID == CMD_STEPPER_CTRL)
         {
-            if (canData.size() == 2) {
-                MOTOR_UART.printf("pump,%d,%d\n", canData[1], canData[2]);
-            }
+            // if (canData.size() == 2) {
+            //     MOTOR_UART.printf("pump,%d,%d\n", canData[1], canData[2]);
+            // }
+            #warning Add Code Here
         }
 
         else if (commandID == CMD_CITADEL_FAN_CTRL) {
@@ -444,52 +446,70 @@ void loop()
             servo3.detach();
         }
 
-        // else if (args[0] == "pump")
-        // {
-        //     MOTOR_UART.print(input);
-        // }
+        else if (args[0] == "pump")
+        {
+            switch (args[1].toInt())
+            {
+            case 1:
+                pump1On = 1;
+                pos1 = args[2].toInt();
+                break;
+            case 2:
+                pump2On = 1;
+                pos2 = args[2].toInt();
+                break;
+            case 3:
+                pump3On = 1;
+                pos3 = args[2].toInt();
+                break;
+            case 4:
+                pump4On = 1;
+                pos4 = args[2].toInt();
+                break;
+            }
+        }
 
-        // else if (args[0] == "Smartservo")
-        // {
-        //   if (command != input)
-        //   {
-        //     if (args[1] == "Relative")
-        //     {
-        //       myLSS.moveRelative(((args[2]).toInt()) * 10);
-        //       Serial.println(myLSS.getPosition());
-        //     }
-        //     else if (args[1] == "FullRetract")
-        //     {
-        //       myLSS.moveRelative(((args[2]).toInt()) * 10);
-        //       Serial.println(myLSS.getPosition());
-        //     }
-        //     else if (args[1] == "FullRetract")
-        //     {
-        //       myLSS.move(-900);
-        //       Serial.println("Full Retractig CITADEL arm");
-        //     }
-        //     else if (args[1] == "Half")
-        //     {
-        //       myLSS.move(0);
-        //       Serial.println("Setting arm to half extend");
-        //     }
-        //     else if (args[1] == "Extend")
-        //     { //
-        //       myLSS.moveRelative(20);
-        //       Serial.println("Extending CITADEL arm");
-        //     }
-        //     else if (args[1] == "Retract")
-        //     { //
-        //       myLSS.moveRelative(-20);
-        //       Serial.println("Retractig CITADEL arm");
-        //     }
-        //     else if (args[1] == "Reset")
-        //     {
-        //       myLSS.reset();
-        //       Serial.println("Servo Reset");
-        //     }
-        //   }
-        // }
+        else if (args[0] == "Smartservo")
+        {
+          if (command != input)
+          {
+            if (args[1] == "Relative")
+            {
+              myLSS.moveRelative(((args[2]).toInt()) * 10);
+              Serial.println(myLSS.getPosition());
+            }
+            else if (args[1] == "FullRetract")
+            {
+              myLSS.moveRelative(((args[2]).toInt()) * 10);
+              Serial.println(myLSS.getPosition());
+            }
+            else if (args[1] == "FullRetract")
+            {
+              myLSS.move(-900);
+              Serial.println("Full Retractig CITADEL arm");
+            }
+            else if (args[1] == "Half")
+            {
+              myLSS.move(0);
+              Serial.println("Setting arm to half extend");
+            }
+            else if (args[1] == "Extend")
+            { //
+              myLSS.moveRelative(20);
+              Serial.println("Extending CITADEL arm");
+            }
+            else if (args[1] == "Retract")
+            { //
+              myLSS.moveRelative(-20);
+              Serial.println("Retractig CITADEL arm");
+            }
+            else if (args[1] == "Reset")
+            {
+              myLSS.reset();
+              Serial.println("Servo Reset");
+            }
+          }
+        }
     }
 
     // if (MOTOR_UART.available()) {

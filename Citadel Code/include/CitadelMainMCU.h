@@ -24,6 +24,8 @@
 #define PIN_STEP_DIR 33  // Direction pin for all steppers
 #define PIN_STEP_ENABLE 27  // Enable pin for all steppers (Why motors get so hot??)
 
+#define motorInterfaceType 1
+
 #define PIN_VIBMOTOR 18
 #define PIN_FAN_1 23
 #define PIN_FAN_2 22
