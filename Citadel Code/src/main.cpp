@@ -22,6 +22,7 @@
 #include "AstraMisc.h"
 #include "project/CITADEL.h"
 #include "AstraVicCAN.h"
+#include "CitadelMainMCU.h"
 
 
 //------------//
@@ -39,7 +40,7 @@
 
 SoftwareSerial Serial_LSS(PIN_LYNX_RX, PIN_LYNX_TX);
 
-SoftwareSerial Serial_Pi(PIN_PI_RX, PIN_PI_TX);
+//SoftwareSerial Serial_Pi(PIN_PI_RX, PIN_PI_TX);
 
 LSS myLSS = LSS(LSS_ID);
 
@@ -107,7 +108,7 @@ void setup()
 
     Serial.begin(SERIAL_BAUD);
 
-    ESP32Can.begin(TWAI_SPEED_1000KBPS, PIN_CTX, PIN_CRX);
+    ESP32Can.begin(TWAI_SPEED_1000KBPS, CAN_TX, CAN_RX);
 
 
     //-----------//
@@ -119,9 +120,9 @@ void setup()
     //  Misc. Components  //
     //--------------------//
 
-    servo1.attach(PIN_PWMSERVO_1);
-    servo2.attach(PIN_PWMSERVO_2);
-    servo3.attach(PIN_PWMSERVO_3);
+    servo1.attach(PIN_PWM_SERVO_1);
+    servo2.attach(PIN_PWM_SERVO_2);
+    servo3.attach(PIN_PWM_SERVO_3);
 
     LSS::initBus(Serial_LSS, LSS_BAUD);
     myLSS.setAngularStiffness(0);
@@ -451,20 +452,21 @@ void loop()
             switch (args[1].toInt())
             {
             case 1:
+                #warning this shit aint working
                 pump1On = 1;
-                pos1 = args[2].toInt();
+                //pos1 = args[2].toInt();
                 break;
             case 2:
                 pump2On = 1;
-                pos2 = args[2].toInt();
+                //pos2 = args[2].toInt();
                 break;
             case 3:
                 pump3On = 1;
-                pos3 = args[2].toInt();
+                //pos3 = args[2].toInt();
                 break;
             case 4:
                 pump4On = 1;
-                pos4 = args[2].toInt();
+                //pos4 = args[2].toInt();
                 break;
             }
         }
