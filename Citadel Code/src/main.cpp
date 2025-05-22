@@ -7,25 +7,16 @@
  */
 
 
-// WARNING: You must edit
-// `Citadel Code/.pio/libdeps/adafruit_feather_esp32_v2/Lynxmotion Smart Servo -LSS-/src/LSS.h`
-// comment out line 18. This will fix the error on line 167 (myLSS:initBus)
-
 //------------//
 //  Includes  //
 //------------//
 
 #include <Arduino.h>
 #include <cmath>
-#include <vector>
 #include <LSS.h>
 
-#ifndef LSS_SupportSoftwareSerial
-#warning "Please uncomment line 18 of LSS.h!!! See top of main.cpp for details."
-#endif
 
 #include <ESP32Servo.h>
-#include <SoftwareSerial.h>
 #include <AccelStepper.h>
 
 #include "AstraMisc.h"
