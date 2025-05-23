@@ -1,5 +1,6 @@
 /**
  * @file main.cpp
+ * @author Charles (you@domain.com)
  * @author Karl (you@domain.com)
  * @author David (you@domain.com)
  * @brief Controls Citadel's fans, servos, LSS, vibration motor, and relays commands for steppers
@@ -14,17 +15,13 @@
 #include <Arduino.h>
 #include <cmath>
 #include <LSS.h>
-
-
 #include <ESP32Servo.h>
 #include <AccelStepper.h>
 
 #include "AstraMisc.h"
-// #include "project/CITADEL.h"
 #include "AstraVicCAN.h"
 #include "CitadelMainMCU.h"
 #include "DRV8825.h"
-
 
 
 //------------//
@@ -145,7 +142,6 @@ void setup()
     stepper2.begin();
     stepper3.begin();
     stepper4.begin();
-
 }
 
 
@@ -198,6 +194,7 @@ void loop()
         fanTimer_3 = 0;
     }
 
+
     //-------------//
     //  CAN input  //
     //-------------//
@@ -234,11 +231,16 @@ void loop()
         }
         Serial.println();
 
-        /**/ if (commandID == CMD_PING)
+
+        // Misc
+
+        if (commandID == CMD_PING)
         {
             vicCAN.respond(1); // "pong"
             Serial.println("Received ping over CAN");
         }
+
+        // Misc Physical Control
 
         else if (commandID == CMD_LSS_TURNBY_DEG)
         {
@@ -291,8 +293,15 @@ void loop()
 
         else if (commandID == CMD_STEPPER_CTRL)
         {
-            pumpActivate(canData[0], canData[1]);
+            if (canData.size() == 2)
+                pumpActivate(canData[0], canData[1]);
         }
+
+        else if (commandID == CMD_LSS_RESET) {
+            myLSS.reset();
+        }
+
+        // Submodule Specific
 
         else if (commandID == CMD_CITADEL_FAN_CTRL) {
             if (canData.size() == 2) {
