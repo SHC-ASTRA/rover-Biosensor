@@ -20,9 +20,11 @@
 #include <AccelStepper.h>
 
 #include "AstraMisc.h"
-#include "project/CITADEL.h"
+// #include "project/CITADEL.h"
 #include "AstraVicCAN.h"
 #include "CitadelMainMCU.h"
+#include "DRV8825.h"
+
 
 
 //------------//
@@ -38,16 +40,19 @@
 //  Component classes  //
 //---------------------//
 
-SoftwareSerial Serial_LSS(PIN_LYNX_RX, PIN_LYNX_TX);
 
 //SoftwareSerial Serial_Pi(PIN_PI_RX, PIN_PI_TX);
 
 LSS myLSS = LSS(LSS_ID);
 
-hw_timer_t *Timer0_Cfg = NULL, *Timer1_Cfg = NULL;
+//hw_timer_t *Timer0_Cfg = NULL, *Timer1_Cfg = NULL;
 Servo servo1, servo2, servo3;
 
-AccelStepper stepper1 = AccelStepper(motorInterfaceType, PIN_STEP_1, PIN_STEP_DIR);
+DRV8825 stepper1(200, PIN_STEP_DIR, PIN_STEP_1, NULL, NULL, NULL, NULL);
+DRV8825 stepper2(200, PIN_STEP_DIR, PIN_STEP_2, NULL, NULL, NULL, NULL);
+DRV8825 stepper3(200, PIN_STEP_DIR, PIN_STEP_3, NULL, NULL, NULL, NULL);
+DRV8825 stepper4(200, PIN_STEP_DIR, PIN_STEP_4, NULL, NULL, NULL, NULL);
+
 
 //----------//
 //  Timing  //
@@ -64,6 +69,7 @@ unsigned long prevFanTime = 0, prevFanTime_1 = 0, prevFanTime_2 = 0, prevFanTime
 //  Prototypes  //
 //--------------//
 
+void pumpActivate(int pumpNum, float mL);
 
 //------------------------------------------------------------------------------------------------//
 //  Setup
@@ -101,6 +107,10 @@ void setup()
     pinMode(PIN_VIBMOTOR, OUTPUT);
     digitalWrite(PIN_VIBMOTOR, LOW);
 
+    // Stepper Enable
+    pinMode(PIN_STEP_ENABLE, OUTPUT);
+    digitalWrite(PIN_STEP_ENABLE, HIGH);
+
 
     //------------------//
     //  Communications  //
@@ -124,12 +134,17 @@ void setup()
     servo2.attach(PIN_PWM_SERVO_2);
     servo3.attach(PIN_PWM_SERVO_3);
 
-    LSS::initBus(Serial_LSS, LSS_BAUD);
+    LSS::initBus(LYNX_SERIAL, LSS_BAUD);
     myLSS.setAngularStiffness(0);
     myLSS.setAngularHoldingStiffness(0);
     myLSS.setAngularAcceleration(15);
     myLSS.setAngularDeceleration(15);
     Serial.println("Smart servo has started");
+    
+    stepper1.begin();
+    stepper2.begin();
+    stepper3.begin();
+    stepper4.begin();
 
 }
 
@@ -186,6 +201,19 @@ void loop()
     //-------------//
     //  CAN input  //
     //-------------//
+    //
+    //
+    //-------------------------------------------------------//
+    //                                                       //
+    //      /////////          //\\          //\\      //    //
+    //    //                  //  \\         // \\     //    //
+    //    //                 //    \\        //  \\    //    //
+    //    //                /////\\\\\       //   \\   //    //
+    //    //               //        \\      //    \\  //    //
+    //    //              //          \\     //     \\ //    //
+    //      /////////    //            \\    //      \\//    //
+    //                                                       //
+    //-------------------------------------------------------//
 
     if (vicCAN.readCan())
     {
@@ -263,10 +291,7 @@ void loop()
 
         else if (commandID == CMD_STEPPER_CTRL)
         {
-            // if (canData.size() == 2) {
-            //     MOTOR_UART.printf("pump,%d,%d\n", canData[1], canData[2]);
-            // }
-            #warning Add Code Here
+            pumpActivate(canData[0], canData[1]);
         }
 
         else if (commandID == CMD_CITADEL_FAN_CTRL) {
@@ -428,6 +453,11 @@ void loop()
             }
         }
 
+        else if (args[0] == "vib")
+        {
+            digitalWrite(PIN_VIBMOTOR, args[1].toInt());
+        }
+
         else if (args[0] == "shutdown")
         {
             digitalWrite(13, LOW);
@@ -449,26 +479,7 @@ void loop()
 
         else if (args[0] == "pump")
         {
-            switch (args[1].toInt())
-            {
-            case 1:
-                #warning this shit aint working
-                pump1On = 1;
-                //pos1 = args[2].toInt();
-                break;
-            case 2:
-                pump2On = 1;
-                //pos2 = args[2].toInt();
-                break;
-            case 3:
-                pump3On = 1;
-                //pos3 = args[2].toInt();
-                break;
-            case 4:
-                pump4On = 1;
-                //pos4 = args[2].toInt();
-                break;
-            }
+            pumpActivate(args[1].toInt(), args[2].toFloat());
         }
 
         else if (args[0] == "Smartservo")
@@ -536,4 +547,37 @@ void loop()
 //    //            //        \\//    //              //
 //    //            //          //      //////////    //
 //                                                    //
-//----------------------------------------------------//
+//----------------------------------------------------//.
+
+void pumpActivate(int pumpNum, float mL)
+{
+    float stepsF = (mL/1.14009)*3600;
+    int stepsI = stepsF;
+    switch (pumpNum)
+    {
+    case 1:
+        pump1On = 1;
+        digitalWrite(PIN_STEP_ENABLE, LOW);
+        stepper1.rotate(stepsI);
+        digitalWrite(PIN_STEP_ENABLE, HIGH);
+        break;
+    case 2:
+        pump2On = 1;
+        digitalWrite(PIN_STEP_ENABLE, LOW);
+        stepper2.rotate(stepsI);
+        digitalWrite(PIN_STEP_ENABLE, HIGH);
+        break;
+    case 3:
+        pump3On = 1;
+        digitalWrite(PIN_STEP_ENABLE, LOW);
+        stepper3.rotate(stepsI);
+        digitalWrite(PIN_STEP_ENABLE, HIGH);
+        break;
+    case 4:
+        pump4On = 1;
+        digitalWrite(PIN_STEP_ENABLE, LOW);
+        stepper4.rotate(stepsI);
+        digitalWrite(PIN_STEP_ENABLE, HIGH);
+        break;
+    }
+}

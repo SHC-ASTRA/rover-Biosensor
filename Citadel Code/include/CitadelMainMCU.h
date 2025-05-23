@@ -34,3 +34,5 @@
 #define PIN_PWM_SERVO_1 26  // Need to figure out if we need to use one PWM for all or individual PWM lines
 #define PIN_PWM_SERVO_2 5
 #define PIN_PWM_SERVO_3 15
+
+#define LYNX_SERIAL Serial2
