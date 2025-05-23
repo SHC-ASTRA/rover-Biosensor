@@ -482,38 +482,33 @@ void loop()
             pumpActivate(args[1].toInt(), args[2].toFloat());
         }
 
-        else if (args[0] == "Smartservo")
+        else if (args[0] == "lynx")
         {
           if (command != input)
           {
-            if (args[1] == "Relative")
+            if (args[1] == "rel")
             {
               myLSS.moveRelative(((args[2]).toInt()) * 10);
               Serial.println(myLSS.getPosition());
             }
-            else if (args[1] == "FullRetract")
+            else if (args[1] == "zero")
             {
-              myLSS.moveRelative(((args[2]).toInt()) * 10);
-              Serial.println(myLSS.getPosition());
-            }
-            else if (args[1] == "FullRetract")
-            {
-              myLSS.move(-900);
+              myLSS.move(800);
               Serial.println("Full Retractig CITADEL arm");
             }
-            else if (args[1] == "Half")
+            else if (args[1] == "half")
             {
-              myLSS.move(0);
+              myLSS.move(-8000);
               Serial.println("Setting arm to half extend");
             }
-            else if (args[1] == "Extend")
+            else if (args[1] == "ext")
             { //
-              myLSS.moveRelative(20);
+              myLSS.moveRelative(-1000);
               Serial.println("Extending CITADEL arm");
             }
-            else if (args[1] == "Retract")
+            else if (args[1] == "ret")
             { //
-              myLSS.moveRelative(-20);
+              myLSS.moveRelative(1000);
               Serial.println("Retractig CITADEL arm");
             }
             else if (args[1] == "Reset")
@@ -522,6 +517,10 @@ void loop()
               Serial.println("Servo Reset");
             }
           }
+        }
+        else if (args[0] == "lss")
+        {
+            myLSS.wheel(args[1].toFloat());
         }
     }
 
