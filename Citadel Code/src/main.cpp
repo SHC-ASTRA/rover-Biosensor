@@ -247,14 +247,9 @@ void loop()
 
             if (canData.size() == 1)
             {
-                if (canData[0] == -1) {
-                    myLSS.wheel(-20);
-                }
-                else if (canData[0] == 0) {
-                    myLSS.wheel(0);
-                }
-                else if (canData[0] == 1) {
-                    myLSS.wheel(20);
+                if (canData[0] <= 100 && canData[0] >= -100)
+                {
+                    myLSS.wheel(canData[0]);
                 }
             }
         }
