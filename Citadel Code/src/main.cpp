@@ -64,6 +64,8 @@ long lastWiggle = 0;  // For PWM servos
 bool servoStates[3] = {false, false, false};
 int servoPositions[3] = {0, 0, 0};
 
+long lastVoltRead = 0;
+
 
 //--------------//
 //  Prototypes  //
@@ -211,6 +213,15 @@ void loop()
             servoPositions[2] = (servoPositions[2] == 0 ? 180 : 0);
             servo3.write(servoPositions[2]);
         }
+    }
+
+    if (millis() - lastVoltRead > 1000) {
+        lastVoltRead = millis();
+        float vBatt = convertADC(analogRead(PIN_VDIV_BATT), 10, 2.21);
+        float v12 = convertADC(analogRead(PIN_VDIV_12V), 10, 3.32);
+        float v5 = convertADC(analogRead(PIN_VDIV_5V), 10, 10);
+
+        vicCAN.send(CMD_POWER_VOLTAGE, vBatt * 100, v12 * 100, v5 * 100);
     }
 
 
