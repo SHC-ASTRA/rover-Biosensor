@@ -33,22 +33,19 @@
 
 #define LSS_ID 254
 
+
 //---------------------//
 //  Component classes  //
 //---------------------//
 
-
-//SoftwareSerial Serial_Pi(PIN_PI_RX, PIN_PI_TX);
-
 LSS myLSS = LSS(LSS_ID);
 
-//hw_timer_t *Timer0_Cfg = NULL, *Timer1_Cfg = NULL;
 Servo servo1, servo2, servo3;
 
-DRV8825 stepper1(200, PIN_STEP_DIR, PIN_STEP_1, NULL, NULL, NULL, NULL);
-DRV8825 stepper2(200, PIN_STEP_DIR, PIN_STEP_2, NULL, NULL, NULL, NULL);
-DRV8825 stepper3(200, PIN_STEP_DIR, PIN_STEP_3, NULL, NULL, NULL, NULL);
-DRV8825 stepper4(200, PIN_STEP_DIR, PIN_STEP_4, NULL, NULL, NULL, NULL);
+DRV8825 stepper1(200, PIN_STEP_DIR, PIN_STEP_1, 0, 0, 0, 0);
+DRV8825 stepper2(200, PIN_STEP_DIR, PIN_STEP_2, 0, 0, 0, 0);
+DRV8825 stepper3(200, PIN_STEP_DIR, PIN_STEP_3, 0, 0, 0, 0);
+DRV8825 stepper4(200, PIN_STEP_DIR, PIN_STEP_4, 0, 0, 0, 0);
 
 
 //----------//
@@ -56,17 +53,26 @@ DRV8825 stepper4(200, PIN_STEP_DIR, PIN_STEP_4, NULL, NULL, NULL, NULL);
 //----------//
 
 bool ledState = false;
-unsigned long fanTimer, fansTimer, fanTimer_1, fanTimer_2, fanTimer_3;
-unsigned long pumpTimer, pumpsTimer, pumpTimer_1, pumpTimer_2, pumpTimer_3;
-bool fansOn = 0, fanOn_1 = 0, fanOn_2 = 0, fanOn_3 = 0; // 1 = long = 2seconds, 0 = short = 0.5s
+
+long fansTimer, fanTimer_1, fanTimer_2, fanTimer_3;
+bool fansOn = 0, fanOn_1 = 0, fanOn_2 = 0, fanOn_3 = 0;
+
+long prevFanTime = 0, prevFanTime_1 = 0, prevFanTime_2 = 0, prevFanTime_3 = 0;
 bool pump1On = 0, pump2On = 0, pump3On = 0, pump4On = 0;
-unsigned long prevFanTime = 0, prevFanTime_1 = 0, prevFanTime_2 = 0, prevFanTime_3 = 0;
+
+long lastWiggle = 0;  // For PWM servos
+bool servoStates[3] = {false, false, false};
+int servoPositions[3] = {0, 0, 0};
+
+long lastVoltRead = 0;
+
 
 //--------------//
 //  Prototypes  //
 //--------------//
 
 void pumpActivate(int pumpNum, float mL);
+
 
 //------------------------------------------------------------------------------------------------//
 //  Setup
@@ -122,7 +128,7 @@ void setup()
     //  Sensors  //
     //-----------//
 
-    
+
     //--------------------//
     //  Misc. Components  //
     //--------------------//
@@ -137,7 +143,7 @@ void setup()
     myLSS.setAngularAcceleration(15);
     myLSS.setAngularDeceleration(15);
     Serial.println("Smart servo has started");
-    
+
     stepper1.begin();
     stepper2.begin();
     stepper3.begin();
@@ -192,6 +198,30 @@ void loop()
         digitalWrite(PIN_FAN_3, LOW);
         fanOn_3 = 0;
         fanTimer_3 = 0;
+    }
+
+    if (millis() - lastWiggle > 1000) {
+        if (servoStates[0]) {
+            servoPositions[0] = (servoPositions[0] == 0 ? 180 : 0);
+            servo1.write(servoPositions[0]);
+        }
+        if (servoStates[1]) {
+            servoPositions[1] = (servoPositions[1] == 0 ? 180 : 0);
+            servo2.write(servoPositions[1]);
+        }
+        if (servoStates[2]) {
+            servoPositions[2] = (servoPositions[2] == 0 ? 180 : 0);
+            servo3.write(servoPositions[2]);
+        }
+    }
+
+    if (millis() - lastVoltRead > 1000) {
+        lastVoltRead = millis();
+        float vBatt = convertADC(analogRead(PIN_VDIV_BATT), 10, 2.21);
+        float v12 = convertADC(analogRead(PIN_VDIV_12V), 10, 3.32);
+        float v5 = convertADC(analogRead(PIN_VDIV_5V), 10, 10);
+
+        vicCAN.send(CMD_POWER_VOLTAGE, vBatt * 100, v12 * 100, v5 * 100);
     }
 
 
@@ -256,22 +286,9 @@ void loop()
 
         else if (commandID == CMD_PWMSERVO_SET_DEG)
         {
-            if (canData.size() == 2)
-            {
-                switch (static_cast<int>(canData[0]))
-                {
-                case 1:
-                    servo1.write(canData[1]);
-                    break;
-                case 2:
-                    servo2.write(canData[1]);
-                    break;
-                case 3:
-                    servo3.write(canData[1]);
-                    break;
-                default:
-                    break;
-                }
+            if (canData.size() == 2 && canData[0] > 0 && canData[0] < 4) {
+                unsigned servoId = static_cast<unsigned>(canData[0]);
+                servoStates[servoId - 1] = static_cast<bool>(canData[1]);
             }
         }
 
