@@ -47,6 +47,8 @@ DRV8825 stepper2(200, PIN_STEP_DIR, PIN_STEP_2, 0, 0, 0, 0);
 DRV8825 stepper3(200, PIN_STEP_DIR, PIN_STEP_3, 0, 0, 0, 0);
 DRV8825 stepper4(200, PIN_STEP_DIR, PIN_STEP_4, 0, 0, 0, 0);
 
+DRV8825* steppers[4] = {&stepper1, &stepper2, &stepper3, &stepper4};
+
 
 //----------//
 //  Timing  //
@@ -74,7 +76,7 @@ void loop2(void* pvParameters) {
         for (int i = 0; i < 4; i++) {
             if (pumpStates[i]) {
                 digitalWrite(PIN_STEP_ENABLE, LOW);
-                stepper4.rotate(pumpSteps[i]);
+                steppers[i]->rotate(pumpSteps[i]);
                 digitalWrite(PIN_STEP_ENABLE, HIGH);
                 pumpStates[i] = false;
                 pumpSteps[i] = 0;
