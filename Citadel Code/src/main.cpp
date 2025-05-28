@@ -201,6 +201,7 @@ void loop()
     }
 
     if (millis() - lastWiggle > 1000) {
+        lastWiggle = millis();
         if (servoStates[0]) {
             servoPositions[0] = (servoPositions[0] == 0 ? 180 : 0);
             servo1.write(servoPositions[0]);
@@ -274,7 +275,6 @@ void loop()
 
         else if (commandID == CMD_LSS_TURNBY_DEG)
         {
-
             if (canData.size() == 1)
             {
                 if (canData[0] <= 100 && canData[0] >= -100)
